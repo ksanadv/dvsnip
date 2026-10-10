@@ -117,12 +117,17 @@ Settings live in `%APPDATA%\dvsnip\settings.txt`. `cargo test` runs the unit tes
 
 ## Releasing
 
+Releases are automatic. Change the version on a branch, merge it, and GitHub Actions publishes it:
+
 ```powershell
-.\release.ps1 -Bump 0.2.0   # sets the version in both Cargo.toml files; commit it on a branch and merge it
-.\release.ps1               # on main: builds, tests, tags v0.2.0 and pushes the tag
+git switch -c release-0.2.0
+.elease.ps1 -Bump 0.2.0   # sets the version in both Cargo.toml files, builds and tests
+# commit, open a pull request, merge it
 ```
 
-Pushing the tag runs the Release workflow, which publishes the setup and portable exes with a `.sha256` for each.
+When `main` has a version with no release yet, the Release workflow tests it, builds the setup and portable exes, adds a
+`.sha256` for each and publishes `v<version>` with an install note and the list of changes. Pushes that do not change the
+version finish in seconds. If a release fails, fix it and re-run the workflow from the Actions tab.
 
 ## License
 
