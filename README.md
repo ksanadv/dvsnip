@@ -6,9 +6,12 @@ capture, written in Rust on plain Win32 and GDI. No tray icon, no window of its 
 
 ## Install
 
+Download `dvsnip-<version>-windows-x64-setup.exe` from the
+[latest release](https://github.com/ksanadv/dvsnip/releases/latest) and run it, or build it yourself:
+
 ```powershell
-.\build-installer.ps1
-.\dist\dvsnip-Setup.exe
+cp .cargo\config.toml.example .cargo\config.toml   # once; set target-dir for your machine
+.\build-installer.ps1                              # dist\dvsnip-<version>-windows-x64-setup.exe and -portable.exe
 ```
 
 The setup (~2 MB) installs for the current user, starts dvsnip with Windows, makes Print Screen open dvsnip instead of
@@ -100,6 +103,15 @@ Release build, one 1920x1080 monitor at 125%, median of several runs.
 - Needs Windows 10 2004 or later for the instant dim layer. HDR is captured as Windows hands it to GDI.
 
 Settings live in `%APPDATA%\dvsnip\settings.txt`. `cargo test` runs the unit tests.
+
+## Releasing
+
+```powershell
+.\release.ps1 -Bump 0.2.0   # sets the version in both Cargo.toml files; commit it on a branch and merge it
+.\release.ps1               # on main: builds, tests, tags v0.2.0 and pushes the tag
+```
+
+Pushing the tag runs the Release workflow, which publishes the setup and portable exes with a `.sha256` for each.
 
 ## License
 

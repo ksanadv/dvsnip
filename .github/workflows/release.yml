@@ -1,0 +1,59 @@
+# Builds and publishes a GitHub release whenever a version tag (v1.2.3) is pushed. `.\release.ps1` makes such a tag.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  # .cargo/config.toml is not in the repo (it holds a machine path), so ask for the static CRT here; build-installer.ps1
+  # fails the build if the exes still import the Visual C++ runtime
+  RUSTFLAGS: -C target-feature=+crt-static
+
+jobs:
+  release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check the tag matches the version in Cargo.toml
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $pattern = '^version\s*=\s*"([^"]+)"'
+          foreach ($f in 'Cargo.toml', 'installer/Cargo.toml') {
+            $v = (Select-String -Path $f -Pattern $pattern | Select-Object -First 1).Matches.Groups[1].Value
+            if ("v$v" -ne $tag) { throw "$f says $v but the tag is $tag" }
+          }
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Test
+        run: cargo test --release
+
+      - name: Build the setup program
+        run: ./build-installer.ps1
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ github.ref_name }}'
+          # build-installer.ps1 left dvsnip-<version>-windows-x64-setup.exe and -portable.exe in dist
+          $files = Get-ChildItem dist\dvsnip-*.exe
+          if ($files.Count -ne 2) { throw "expected 2 files in dist, found $($files.Name)" }
+          foreach ($f in $files) {
+            $hash = (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower()
+            [IO.File]::WriteAllText("$($f.FullName).sha256", "$hash  $($f.Name)`n")
+          }
+          # the install text from release-notes.md, followed by GitHub's generated list of changes
+          gh release create $tag --verify-tag --title "dvsnip $($tag.TrimStart('v'))" `
+            --notes-file .github/release-notes.md --generate-notes (Get-ChildItem dist\dvsnip-*).FullName
